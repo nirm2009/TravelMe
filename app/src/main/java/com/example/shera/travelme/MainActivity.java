@@ -322,6 +322,8 @@ public class MainActivity extends AppCompatActivity{
                 e.printStackTrace();
             } catch (ParseException e) {
                 e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
 
 

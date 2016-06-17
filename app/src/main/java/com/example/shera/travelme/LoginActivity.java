@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -52,7 +53,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
+import com.facebook.appevents.AppEventsLogger;
+import com.facebook.login.LoginManager;
+import com.facebook.login.LoginResult;
+import com.facebook.login.widget.LoginButton;
 
 
 import static android.Manifest.permission.READ_CONTACTS;
@@ -78,10 +86,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
+    private LoginButton fbLoginButton;
+    private CallbackManager fbCallbackManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        FacebookSdk.sdkInitialize(getApplicationContext());
+        AppEventsLogger.activateApp(this);
+
+        fbCallbackManager = CallbackManager.Factory.create();
+
         setContentView(R.layout.activity_login);
         // Set up the login form.
         mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
@@ -99,6 +114,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             }
         });
 
+        // Set up the Facebook login
+        fbLoginButton = (LoginButton)findViewById(R.id.login_button);
+
         Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
         mEmailSignInButton.setOnClickListener(new OnClickListener() {
             @Override
@@ -108,6 +126,36 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         });
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+
+        fbLoginButton.registerCallback(fbCallbackManager, new FacebookCallback<LoginResult>() {
+            @Override
+            public void onSuccess(LoginResult loginResult) {
+                Toast.makeText(getBaseContext(), "You have been logged in", Toast.LENGTH_SHORT).show();
+                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                startActivity(intent);
+            }
+
+            @Override
+            public void onCancel() {
+            }
+
+            @Override
+            public void onError(FacebookException e) {
+                Toast.makeText(getBaseContext(), "Error occurred!\nPlease try again later!", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        fbCallbackManager.onActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        LoginManager.getInstance().logOut();
     }
 
     private void populateAutoComplete() {
@@ -414,6 +462,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                 int status = jsonObjWhole.getInt("status");
                 if (status == 200) {
                     // If successfully signed in, move to main screen
+                    Toast.makeText(getBaseContext(), "You have been logged in", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(context, MainActivity.class);
                     startActivity(intent);
                 } else if (status == 403) {
@@ -427,7 +476,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                     // those credentials
                     performSignUp(email, password);
                 } else {
-                    Toast.makeText(getBaseContext(), "Please try again later!", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getBaseContext(), "Error occurred!\nPlease try again later!", Toast.LENGTH_SHORT).show();
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -493,7 +542,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
                 } else {
                     //TODO: Fix 2nd sign up not working issue (primary key duplication, leads to this block)
-                    Toast.makeText(getBaseContext(), "Please try again later !", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getBaseContext(), "Error occurred!\nPlease try again later!", Toast.LENGTH_SHORT).show();
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
